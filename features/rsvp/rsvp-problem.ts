@@ -1,6 +1,12 @@
+export type RsvpFieldErrors = {
+  contact?: string;
+  channel?: string;
+  consent?: string;
+};
+
 export type RsvpProblem =
   | { kind: "duplicate"; message: string; maskedContact?: string }
-  | { kind: "validation"; message: string }
+  | { kind: "validation"; message: string; fieldErrors?: RsvpFieldErrors }
   | { kind: "retry"; message: string }
   | { kind: "server"; message: string };
 
@@ -23,7 +29,11 @@ export async function mapRsvpProblem(response: Response): Promise<RsvpProblem> {
   if (response.status === 400) {
     return {
       kind: "validation",
-      message: "Check the contact, reminder channel, and consent fields.",
+      message: "Fix the highlighted fields.",
+      fieldErrors: {
+        contact: "Check this contact and reminder channel.",
+        channel: "Choose the channel that matches the contact.",
+      },
     };
   }
 

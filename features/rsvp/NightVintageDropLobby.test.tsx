@@ -77,8 +77,39 @@ describe("NightVintageDropLobby", () => {
     expect(screen.queryByText("We could not save the reminder yet. Please try again.")).not.toBeInTheDocument();
   });
 
-  test("keeps entered values after validation errors", async () => {
+  test("shows missing consent as a field-level error without submitting", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("{}", { status: 201 }));
+
+    render(<NightVintageDropLobby />);
+
+    await userEvent.type(screen.getByLabelText("Email or phone"), "buyer@example.com");
+    await userEvent.click(screen.getByLabelText("Email"));
+    await userEvent.click(screen.getByRole("button", { name: "Get reminder" }));
+
+    expect(screen.getByText("Confirm the reminder consent before continuing.")).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  test("keeps entered values after server validation errors and points to fields", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("{}", { status: 400 }));
+
+    render(<NightVintageDropLobby />);
+
+    const contactInput = screen.getByLabelText("Email or phone");
+    await userEvent.type(contactInput, "buyer@example.com");
+    await userEvent.click(screen.getByLabelText("Email"));
+    await userEvent.click(screen.getByLabelText(/I agree to receive one reminder/));
+    await userEvent.click(screen.getByRole("button", { name: "Get reminder" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Check this contact and reminder channel.")).toBeInTheDocument();
+    });
+    expect(screen.getByText("Choose the channel that matches the contact.")).toBeInTheDocument();
+    expect(contactInput).toHaveValue("buyer@example.com");
+  });
+
+  test("shows invalid email as a contact field error before submitting", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("{}", { status: 201 }));
 
     render(<NightVintageDropLobby />);
 
@@ -88,10 +119,9 @@ describe("NightVintageDropLobby", () => {
     await userEvent.click(screen.getByLabelText(/I agree to receive one reminder/));
     await userEvent.click(screen.getByRole("button", { name: "Get reminder" }));
 
-    await waitFor(() => {
-      expect(screen.getByText("Check the contact, reminder channel, and consent fields.")).toBeInTheDocument();
-    });
+    expect(screen.getByText("Enter a valid email address.")).toBeInTheDocument();
     expect(contactInput).toHaveValue("not-an-email");
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   test("recovers the form when the reminder request cannot reach the API", async () => {

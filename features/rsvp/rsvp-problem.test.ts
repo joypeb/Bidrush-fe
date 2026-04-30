@@ -23,7 +23,11 @@ describe("mapRsvpProblem", () => {
   test("maps validation and retryable errors without exposing raw payloads", async () => {
     await expect(mapRsvpProblem(new Response("{}", { status: 400 }))).resolves.toMatchObject({
       kind: "validation",
-      message: "Check the contact, reminder channel, and consent fields.",
+      message: "Fix the highlighted fields.",
+      fieldErrors: {
+        contact: "Check this contact and reminder channel.",
+        channel: "Choose the channel that matches the contact.",
+      },
     });
     await expect(mapRsvpProblem(new Response("{}", { status: 429 }))).resolves.toMatchObject({
       kind: "retry",

@@ -2,10 +2,11 @@
 
 import { FormEvent, useId, useState } from "react";
 
-import { mapRsvpProblem, type RsvpProblem } from "./rsvp-problem";
+import { mapRsvpProblem, type RsvpFieldErrors, type RsvpProblem } from "./rsvp-problem";
 
 const eventId = "night-vintage-drop";
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
+const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 type ReminderChannel = "EMAIL" | "SMS";
 type SubmitState =
@@ -25,19 +26,28 @@ export function NightVintageDropLobby() {
   const emailChannelId = useId();
   const smsChannelId = useId();
   const consentId = useId();
+  const contactErrorId = useId();
+  const channelErrorId = useId();
+  const consentErrorId = useId();
   const [contact, setContact] = useState("");
   const [channel, setChannel] = useState<ReminderChannel>("EMAIL");
   const [consentAccepted, setConsentAccepted] = useState(false);
   const [submitState, setSubmitState] = useState<SubmitState>({ kind: "idle" });
+  const fieldErrors =
+    submitState.kind === "error" && submitState.problem.kind === "validation"
+      ? submitState.problem.fieldErrors ?? {}
+      : {};
 
   async function submitReminder(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!consentAccepted) {
+    const clientFieldErrors = validateReminderFields(contact, channel, consentAccepted);
+    if (hasFieldErrors(clientFieldErrors)) {
       setSubmitState({
         kind: "error",
         problem: {
           kind: "validation",
-          message: "Check the contact, reminder channel, and consent fields.",
+          message: "Fix the highlighted fields.",
+          fieldErrors: clientFieldErrors,
         },
       });
       return;
@@ -151,14 +161,23 @@ export function NightVintageDropLobby() {
               </label>
               <input
                 id={contactId}
-                className="h-11 w-full rounded-[var(--radius-sm)] border border-[var(--color-border)] px-3 text-base outline-none focus:border-[var(--color-brand)] focus:ring-2 focus:ring-[var(--color-brand-soft)]"
+                aria-describedby={fieldErrors.contact ? contactErrorId : undefined}
+                aria-invalid={fieldErrors.contact ? true : undefined}
+                className={`h-11 w-full rounded-[var(--radius-sm)] border px-3 text-base outline-none focus:border-[var(--color-brand)] focus:ring-2 focus:ring-[var(--color-brand-soft)] ${
+                  fieldErrors.contact ? "border-[var(--color-danger)]" : "border-[var(--color-border)]"
+                }`}
                 inputMode={channel === "SMS" ? "tel" : "email"}
                 value={contact}
                 onChange={(event) => setContact(event.target.value)}
               />
+              {fieldErrors.contact && (
+                <p id={contactErrorId} className="text-sm text-[var(--color-danger)]">
+                  {fieldErrors.contact}
+                </p>
+              )}
             </div>
 
-            <fieldset className="space-y-2">
+            <fieldset aria-describedby={fieldErrors.channel ? channelErrorId : undefined} className="space-y-2">
               <legend className="text-sm font-medium">Reminder channel</legend>
               <div className="grid grid-cols-2 gap-2">
                 <ChannelOption
@@ -176,18 +195,32 @@ export function NightVintageDropLobby() {
                   onChange={setChannel}
                 />
               </div>
+              {fieldErrors.channel && (
+                <p id={channelErrorId} className="text-sm text-[var(--color-danger)]">
+                  {fieldErrors.channel}
+                </p>
+              )}
             </fieldset>
 
-            <label className="flex gap-3 text-sm leading-6 text-[var(--color-text-muted)]" htmlFor={consentId}>
-              <input
-                id={consentId}
-                type="checkbox"
-                className="mt-1 h-4 w-4 rounded border-[var(--color-border)]"
-                checked={consentAccepted}
-                onChange={(event) => setConsentAccepted(event.target.checked)}
-              />
-              <span>I agree to receive one reminder for the Night Vintage Drop.</span>
-            </label>
+            <div className="space-y-2">
+              <label className="flex gap-3 text-sm leading-6 text-[var(--color-text-muted)]" htmlFor={consentId}>
+                <input
+                  id={consentId}
+                  type="checkbox"
+                  aria-describedby={fieldErrors.consent ? consentErrorId : undefined}
+                  aria-invalid={fieldErrors.consent ? true : undefined}
+                  className="mt-1 h-4 w-4 rounded border-[var(--color-border)]"
+                  checked={consentAccepted}
+                  onChange={(event) => setConsentAccepted(event.target.checked)}
+                />
+                <span>I agree to receive one reminder for the Night Vintage Drop.</span>
+              </label>
+              {fieldErrors.consent && (
+                <p id={consentErrorId} className="text-sm text-[var(--color-danger)]">
+                  {fieldErrors.consent}
+                </p>
+              )}
+            </div>
 
             <button
               className="h-11 w-full rounded-[var(--radius-sm)] bg-[var(--color-brand)] px-4 text-base font-semibold text-[var(--color-text-inverse)] transition hover:bg-[var(--color-brand-strong)] disabled:cursor-not-allowed disabled:opacity-70"
@@ -208,6 +241,41 @@ export function NightVintageDropLobby() {
         </section>
       </section>
     </main>
+  );
+}
+
+function validateReminderFields(
+  contact: string,
+  channel: ReminderChannel,
+  consentAccepted: boolean,
+): RsvpFieldErrors {
+  const errors: RsvpFieldErrors = {};
+  const trimmedContact = contact.trim();
+
+  if (!trimmedContact) {
+    errors.contact = channel === "SMS" ? "Enter a phone number for SMS reminders." : "Enter an email address.";
+  } else if (channel === "EMAIL" && !EMAIL_PATTERN.test(trimmedContact)) {
+    errors.contact = "Enter a valid email address.";
+  } else if (channel === "SMS" && !isKoreanMobileNumber(trimmedContact)) {
+    errors.contact = "Enter a Korean mobile number like 010-1234-5678.";
+  }
+
+  if (!consentAccepted) {
+    errors.consent = "Confirm the reminder consent before continuing.";
+  }
+
+  return errors;
+}
+
+function hasFieldErrors(errors: RsvpFieldErrors) {
+  return Boolean(errors.contact || errors.channel || errors.consent);
+}
+
+function isKoreanMobileNumber(value: string) {
+  const digitsOnly = value.replace(/[^0-9]/g, "");
+  return (
+    (digitsOnly.startsWith("010") && digitsOnly.length === 11)
+    || (digitsOnly.startsWith("8210") && digitsOnly.length === 12)
   );
 }
 
