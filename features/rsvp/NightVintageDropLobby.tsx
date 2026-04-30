@@ -45,20 +45,32 @@ export function NightVintageDropLobby() {
 
     setSubmitState({ kind: "submitting" });
 
-    const response = await fetch(`${apiBaseUrl}/api/events/${eventId}/rsvps`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        contactType: channel === "EMAIL" ? "EMAIL" : "PHONE",
-        contact,
-        reminderChannel: channel,
-        reminderIntent: true,
-        consentAccepted,
-        source: "lobby",
-      }),
-    });
+    let response: Response;
+    try {
+      response = await fetch(`${apiBaseUrl}/api/events/${eventId}/rsvps`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          contactType: channel === "EMAIL" ? "EMAIL" : "PHONE",
+          contact,
+          reminderChannel: channel,
+          reminderIntent: true,
+          consentAccepted,
+          source: "lobby",
+        }),
+      });
+    } catch {
+      setSubmitState({
+        kind: "error",
+        problem: {
+          kind: "server",
+          message: "We could not save the reminder yet. Please try again.",
+        },
+      });
+      return;
+    }
 
     if (response.ok) {
       const body = (await response.json()) as RsvpResponse;

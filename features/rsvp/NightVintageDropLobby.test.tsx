@@ -93,4 +93,22 @@ describe("NightVintageDropLobby", () => {
     });
     expect(contactInput).toHaveValue("not-an-email");
   });
+
+  test("recovers the form when the reminder request cannot reach the API", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new TypeError("Failed to fetch"));
+
+    render(<NightVintageDropLobby />);
+
+    const contactInput = screen.getByLabelText("Email or phone");
+    await userEvent.type(contactInput, "buyer@example.com");
+    await userEvent.click(screen.getByLabelText("Email"));
+    await userEvent.click(screen.getByLabelText(/I agree to receive one reminder/));
+    await userEvent.click(screen.getByRole("button", { name: "Get reminder" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("We could not save the reminder yet. Please try again.")).toBeInTheDocument();
+    });
+    expect(contactInput).toHaveValue("buyer@example.com");
+    expect(screen.getByRole("button", { name: "Get reminder" })).toBeEnabled();
+  });
 });
