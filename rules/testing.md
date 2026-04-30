@@ -97,9 +97,9 @@
   "scripts": {
     "build": "next build",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint .",
-    "test": "vitest",
-    "test:e2e": "playwright test"
+    "lint": "eslint",
+    "test": "vitest run",
+    "test:e2e": "playwright install chromium && playwright test"
   }
 }
 ```
