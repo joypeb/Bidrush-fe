@@ -22,7 +22,6 @@ const snapshot: AuctionSnapshot = {
     bidIncrement: 5000,
     currentPrice: 120000,
     bidCount: 0,
-    highestBidderId: null,
     status: "ACTIVE",
     endsAt: "2026-05-01T13:03:00Z",
     extensionCount: 0,
@@ -33,7 +32,7 @@ const snapshot: AuctionSnapshot = {
 };
 
 describe("auctionRoomReducer", () => {
-  it("accepted bid updates server-confirmed price and clears pending state", () => {
+  it("accepted bid updates server-confirmed price without exposing bidder identity", () => {
     const state = auctionRoomReducer(createAuctionRoomState(snapshot, "bidder-1"), {
       type: "bid.submitted",
       amount: 125000,
@@ -46,7 +45,6 @@ describe("auctionRoomReducer", () => {
         auctionItemId: "night-jacket-01",
         currentPrice: 125000,
         bidCount: 1,
-        highestBidderId: "bidder-1",
         endsAt: "2026-05-01T13:03:00Z",
         extensionCount: 0,
       }),
@@ -54,8 +52,8 @@ describe("auctionRoomReducer", () => {
 
     expect(next.activeItem?.currentPrice).toBe(125000);
     expect(next.activeItem?.bidCount).toBe(1);
-    expect(next.bidState.kind).toBe("accepted");
-    expect(next.pendingBid).toBeNull();
+    expect(next.bidState.kind).toBe("submitting");
+    expect(next.pendingBid).toEqual({ amount: 125000, idempotencyKey: "bid-1" });
   });
 
   it("rejected bid clears pending and keeps server-confirmed price separate", () => {
@@ -84,7 +82,7 @@ describe("auctionRoomReducer", () => {
       {
         ...snapshot,
         bidderState: "WINNING",
-        activeItem: snapshot.activeItem && { ...snapshot.activeItem, highestBidderId: "bidder-1" },
+        activeItem: snapshot.activeItem && { ...snapshot.activeItem },
       },
       "bidder-1",
     );
@@ -95,7 +93,6 @@ describe("auctionRoomReducer", () => {
         auctionItemId: "night-jacket-01",
         currentPrice: 130000,
         bidCount: 2,
-        highestBidderId: "bidder-2",
         endsAt: "2026-05-01T13:03:00Z",
         extensionCount: 0,
       }),
@@ -111,7 +108,6 @@ describe("auctionRoomReducer", () => {
       auctionItemId: "night-jacket-01",
       currentPrice: 125000,
       bidCount: 1,
-      highestBidderId: "bidder-2",
       endsAt: "2026-05-01T13:03:00Z",
       extensionCount: 0,
     });
@@ -124,7 +120,6 @@ describe("auctionRoomReducer", () => {
         auctionItemId: "night-jacket-01",
         currentPrice: 999999,
         bidCount: 99,
-        highestBidderId: "bidder-3",
         endsAt: "2026-05-01T13:03:00Z",
         extensionCount: 0,
       }),
@@ -153,6 +148,33 @@ describe("auctionRoomReducer", () => {
     expect(next.eventVersion).toBe(9);
     expect(next.activeItem?.currentPrice).toBe(145000);
     expect(next.bidderState).toBe("WINNING");
+  });
+
+  it("event and item started realtime snapshots replace the visible room state", () => {
+    const startedSnapshot: AuctionSnapshot = {
+      ...snapshot,
+      eventVersion: 3,
+      activeItem: {
+        ...snapshot.activeItem!,
+        id: "night-sweat-02",
+        position: 2,
+        title: "1990s Navy Reverse Sweatshirt",
+        currentPrice: 68000,
+        bidCount: 0,
+      },
+      queue: [],
+      bidderState: "READY",
+    };
+
+    const next = auctionRoomReducer(createAuctionRoomState(snapshot, "bidder-1"), {
+      type: "realtime.event",
+      event: event("evt-item-started", 3, "auction.item.started", startedSnapshot),
+    });
+
+    expect(next.activeItem?.id).toBe("night-sweat-02");
+    expect(next.activeItem?.title).toBe("1990s Navy Reverse Sweatshirt");
+    expect(next.eventVersion).toBe(3);
+    expect(next.bidderState).toBe("READY");
   });
 });
 

@@ -10,7 +10,7 @@ type VerifyBidderClientProps = {
 
 type Step =
   | { kind: "contact" }
-  | { kind: "code"; verificationId: string; maskedContact: string; devCode: string }
+  | { kind: "code"; verificationId: string; maskedContact: string }
   | { kind: "verified"; maskedContact: string };
 
 export function VerifyBidderClient({ eventId }: VerifyBidderClientProps) {
@@ -32,9 +32,9 @@ export function VerifyBidderClient({ eventId }: VerifyBidderClientProps) {
       setError("Check the contact and try again.");
       return;
     }
-    const body = (await response.json()) as { verificationId: string; maskedContact: string; devCode: string };
-    setCode(body.devCode);
-    setStep({ kind: "code", ...body });
+    const body = (await response.json()) as { verificationId: string; maskedContact: string; devCode?: string };
+    setCode(body.devCode ?? "");
+    setStep({ kind: "code", verificationId: body.verificationId, maskedContact: body.maskedContact });
   }
 
   async function confirmCode(event: FormEvent<HTMLFormElement>) {

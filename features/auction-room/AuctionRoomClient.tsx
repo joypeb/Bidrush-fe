@@ -163,6 +163,11 @@ export function AuctionRoomClient({ initialSnapshot }: AuctionRoomClientProps) {
         </div>
 
         <div className="space-y-4">
+          {state.syncState === "failed" && (
+            <p className="rounded-[var(--radius-sm)] border border-[var(--color-danger)] bg-[var(--color-danger-soft)] p-3 text-sm text-[var(--color-danger)]" aria-live="polite">
+              Could not sync auction state. Reconnecting to the server.
+            </p>
+          )}
           <CurrentPrice currentPrice={visibleItem?.currentPrice ?? 0} bidCount={visibleItem?.bidCount ?? 0} />
           <Countdown
             endsAt={state.activeItem?.endsAt ?? null}

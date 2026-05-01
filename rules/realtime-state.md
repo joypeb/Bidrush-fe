@@ -82,7 +82,6 @@ export function auctionRoomReducer(state: AuctionRoomState, event: AuctionEvent)
         ...state,
         version: event.version,
         currentPrice: event.payload.currentPrice,
-        highestBidderId: event.payload.highestBidderId,
         bidCount: event.payload.bidCount,
         pendingBidId: undefined,
       };

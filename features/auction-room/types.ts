@@ -2,6 +2,7 @@ export type AuctionEventStatus = "SCHEDULED" | "LIVE" | "CLOSED";
 export type AuctionItemStatus = "WAITING" | "ACTIVE" | "CLOSED";
 export type BidderState = "ANONYMOUS" | "READY" | "WINNING" | "OUTBID" | "CLOSED";
 export type ConnectionState = "connected" | "reconnecting" | "offline";
+export type SyncState = "ok" | "failed";
 
 export type AuctionItem = {
   id: string;
@@ -15,7 +16,6 @@ export type AuctionItem = {
   bidIncrement: number;
   currentPrice: number;
   bidCount: number;
-  highestBidderId: string | null;
   status: AuctionItemStatus;
   endsAt: string | null;
   extensionCount: number;
@@ -38,6 +38,7 @@ export type AuctionSnapshot = {
   eventVersion: number;
   startsAt: string;
   serverTime: string;
+  syncState?: SyncState;
   activeItem: AuctionItem | null;
   queue: AuctionItem[];
   bidderState: BidderState;
@@ -79,7 +80,6 @@ export type AuctionRealtimeEvent =
         auctionItemId: string;
         currentPrice: number;
         bidCount: number;
-        highestBidderId: string;
         endsAt: string;
         extensionCount: number;
       };
@@ -111,6 +111,14 @@ export type AuctionRealtimeEvent =
       auctionId: string;
       occurredAt: string;
       payload: Partial<AuctionSnapshot>;
+    }
+  | {
+      eventId: string;
+      eventType: "auction.event.started" | "auction.item.started";
+      eventVersion: number;
+      auctionId: string;
+      occurredAt: string;
+      payload: AuctionSnapshot;
     };
 
 export type AuctionRoomAction =

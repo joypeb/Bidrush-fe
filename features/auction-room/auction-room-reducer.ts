@@ -80,6 +80,9 @@ function applyRealtimeEvent(state: AuctionRoomState, event: AuctionRealtimeEvent
         ...nextBase,
         recentChat: [...nextBase.recentChat, event.payload].slice(-50),
       };
+    case "auction.event.started":
+    case "auction.item.started":
+      return applySnapshotEvent(nextBase, event.payload);
     case "auction.closed":
       return {
         ...nextBase,
@@ -103,10 +106,9 @@ function applyBidAccepted(
   const queue = state.queue.map((item) =>
     item.id === event.payload.auctionItemId ? updateAcceptedQueueItem(item, event) : item,
   );
-  const isMine = state.bidderId === event.payload.highestBidderId;
   const wasWinning = state.bidderState === "WINNING";
-  const bidderState: BidderState = isMine ? "WINNING" : wasWinning ? "OUTBID" : state.bidderState;
-  const bidState: BidState = isMine ? { kind: "accepted" } : wasWinning ? { kind: "outbid" } : state.bidState;
+  const bidderState: BidderState = wasWinning ? "OUTBID" : state.bidderState;
+  const bidState: BidState = wasWinning ? { kind: "outbid" } : state.bidState;
 
   return {
     ...state,
@@ -114,7 +116,17 @@ function applyBidAccepted(
     queue,
     bidderState,
     bidState,
-    pendingBid: isMine || wasWinning ? null : state.pendingBid,
+    pendingBid: wasWinning ? null : state.pendingBid,
+  };
+}
+
+function applySnapshotEvent(state: AuctionRoomState, snapshot: AuctionSnapshot): AuctionRoomState {
+  const bidderState: BidderState =
+    state.bidderState === "ANONYMOUS" ? "ANONYMOUS" : snapshot.bidderState === "ANONYMOUS" ? "READY" : snapshot.bidderState;
+  return {
+    ...createAuctionRoomState({ ...snapshot, bidderState }, state.bidderId),
+    connectionState: state.connectionState,
+    seenEventIds: state.seenEventIds,
   };
 }
 
@@ -126,7 +138,6 @@ function updateAcceptedQueueItem(
     ...item,
     currentPrice: event.payload.currentPrice,
     bidCount: event.payload.bidCount,
-    highestBidderId: event.payload.highestBidderId,
     endsAt: event.payload.endsAt,
     extensionCount: event.payload.extensionCount,
   };
@@ -143,7 +154,6 @@ function updateAcceptedItem(
     ...item,
     currentPrice: event.payload.currentPrice,
     bidCount: event.payload.bidCount,
-    highestBidderId: event.payload.highestBidderId,
     endsAt: event.payload.endsAt,
     extensionCount: event.payload.extensionCount,
   };

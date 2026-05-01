@@ -15,7 +15,6 @@ const activeItem: AuctionItem = {
   bidIncrement: 5000,
   currentPrice: 120000,
   bidCount: 0,
-  highestBidderId: null,
   status: "ACTIVE",
   endsAt: "2026-05-01T13:03:00Z",
   extensionCount: 0,
