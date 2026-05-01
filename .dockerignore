@@ -1,0 +1,7 @@
+.git
+.idea
+.next
+coverage
+node_modules
+test-results
+npm-debug.log*
