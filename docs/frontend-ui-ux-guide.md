@@ -937,7 +937,6 @@ export const breakpoints = {
 type AuctionRoomState = {
   auctionId: string;
   currentPrice: number;
-  highestBidderId?: string;
   bidCount: number;
   endsAt: string;
   status: "OPEN" | "CLOSED";

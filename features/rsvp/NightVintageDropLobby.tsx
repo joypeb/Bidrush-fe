@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useId, useState } from "react";
 
 import { mapRsvpProblem, type RsvpFieldErrors, type RsvpProblem } from "./rsvp-problem";
@@ -230,6 +231,13 @@ export function NightVintageDropLobby() {
               {submitState.kind === "submitting" ? "Saving reminder" : "Get reminder"}
             </button>
           </form>
+
+          <Link
+            className="mt-3 flex h-11 w-full items-center justify-center rounded-[var(--radius-sm)] border border-[var(--color-brand)] px-4 text-base font-semibold text-[var(--color-brand-strong)]"
+            href={`/events/${eventId}`}
+          >
+            Enter event room
+          </Link>
 
           <ReminderStatus state={submitState} />
 
